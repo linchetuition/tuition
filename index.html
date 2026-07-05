@@ -1,0 +1,1116 @@
+<title>林澈 學費單系統</title>
+<!-- 僅保留極速 Excel 讀取引擎 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  body { font-family: 'Segoe UI', 'PingFang TC', sans-serif; background: #f8fafc; color: #334155; padding: 20px; max-width: 1400px; margin: 0 auto; line-height: 1.6; }
+  
+  /* 全新極簡設計色塊 */
+  .color-block { display: inline-block; width: 6px; height: 18px; border-radius: 3px; margin-right: 8px; vertical-align: middle; position: relative; top: -1px; }
+  .c-gold { background-color: #E2B64E; height: 24px; width: 8px; top: -2px; }
+  .c-slate { background-color: #64748b; }
+  .c-green { background-color: #10b981; }
+  .c-purple { background-color: #8b5cf6; }
+  .c-orange { background-color: #f59e0b; }
+  .c-blue { background-color: #0ea5e9; }
+  .c-pink { background-color: #ec4899; }
+
+  .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #E2B64E; padding-bottom: 10px; margin-bottom: 20px; }
+  .header h1 { margin: 0; color: #0f172a; font-weight: 800; letter-spacing: 1px; display: flex; align-items: center;}
+  
+  /* 優雅提示框 */
+  #toast { display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#334155; color:white; padding:12px 24px; border-radius:8px; z-index:9999; font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,0.15); transition: opacity 0.3s; }
+
+  .control-panel { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 20px; display: flex; gap: 20px; align-items: stretch;}
+  
+  .btn { background: #E2B64E; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1.05em; transition: all 0.2s; box-shadow: 0 2px 5px rgba(226, 182, 78, 0.3);}
+  .btn:hover { background: #d4a33c; transform: translateY(-1px); }
+  .btn-action { background: #0ea5e9; font-size: 1.1em;} .btn-action:hover { background: #0284c7; }
+  .btn-export-excel { background: #10b981; flex: 1;} .btn-export-excel:hover { background: #059669; }
+  .btn-print { background: #8b5cf6; flex: 1;} .btn-print:hover { background: #7c3aed; }
+  
+  .main-container { display: flex; gap: 20px; align-items: flex-start; }
+  .list-section { flex: 1.7; background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); max-height: 800px; overflow-y: auto;}
+  .calc-section { flex: 1; background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: block; position: sticky; top: 20px; min-height: 500px;}
+  
+  table.student-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  table.student-table th { background: #f8fafc; color: #475569; font-weight: 700; padding: 12px 8px; text-align: left; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 1; white-space: nowrap;}
+  table.student-table td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 0.9em; color: #1e293b; }
+  table.student-table tr:hover { background: #f1f5f9; cursor: pointer;}
+  table.student-table tr.active { background: #fffbeb; border-left: 4px solid #E2B64E; }
+  
+  /* 轉全科 checkbox 顏色改為鐵灰色 */
+  input.force-chk { accent-color: #64748b; }
+  
+  .tag { padding: 4px 8px; border-radius: 6px; font-size: 0.8em; font-weight: bold; }
+  .tag.ready { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+  .tag.skip { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+  
+  .special-badge { font-size: 0.75em; padding: 2px 6px; border-radius: 4px; margin-left: 6px; display: inline-block; vertical-align: middle; font-weight: bold;}
+  .badge-overpay { background: #fef08a; color: #b45309; border: 1px solid #fde047; }
+  .badge-sibling { background: #e0e7ff; color: #0369a1; border: 1px solid #c7d2fe; }
+
+  .term-badge { font-size: 0.8em; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: inline-block; }
+  .term-1 { background: #e0f2fe; color: #0369a1; }
+  .term-2 { background: #dcfce7; color: #15803d; }
+
+  .export-actions { margin-top: 20px; padding-top: 20px; border-top: 1px dashed #cbd5e1; display: flex; gap: 15px; }
+  
+  input[type="date"], input[type="text"], input[type="number"], input[type="month"], select, textarea { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95em; width: 100%; box-sizing: border-box; font-family: inherit;}
+  .form-group { margin-bottom: 15px; }
+  .form-group label { display: block; font-weight: 700; color: #334155; margin-bottom: 5px; font-size: 0.9em; }
+  
+  .breakdown-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
+  .breakdown-table th { background: #e2e8f0; padding: 8px 6px; text-align: left; color: #334155; }
+  .breakdown-table td { padding: 8px 6px; border-bottom: 1px solid #e2e8f0; }
+  .breakdown-container { max-height: 380px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);}
+
+  #calcOverlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.85); z-index: 10; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #64748b; font-size: 1.2em; border-radius: 10px; backdrop-filter: blur(2px);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span class="color-block c-gold"></span>林澈 學費單系統</h1>
+  <div style="font-weight: bold; color: #64748b; font-size: 1.1em;" id="systemMonthLabel"></div>
+</div>
+
+<div id="toast"></div>
+
+<!-- 全新黃金比例控制面板 -->
+<div class="control-panel">
+  
+  <!-- 左：上傳區塊 -->
+  <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; transition: border 0.3s;" onmouseover="this.style.borderColor='#E2B64E'" onmouseout="this.style.borderColor='#cbd5e1'">
+    <label style="font-weight: 700; color: #0f172a; font-size: 1.2em; margin-bottom: 15px; display: flex; align-items: center;"><span class="color-block c-slate"></span>上傳學生名單 (.xlsx)</label>
+    <input type="file" id="excelUpload" accept=".xlsx, .xls" style="width: 100%; max-width: 250px; cursor: pointer;">
+  </div>
+
+  <!-- 中：年級與期限 -->
+  <div style="flex: 1.2; display: flex; flex-direction: column; gap: 15px;">
+    <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+      <label style="font-weight: 700; color: #0f172a; display: flex; align-items: center;"><span class="color-block c-green"></span>名單本期起始年級</label>
+      <select id="globalGradeSelect" onchange="triggerReprocess()" style="margin-top: 8px; font-weight: bold;">
+        <option value="1">國一</option>
+        <option value="2" selected>國二 (預設)</option>
+        <option value="3">國三</option>
+      </select>
+    </div>
+    
+    <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+      <label style="font-weight: 700; color: #0f172a; display: flex; align-items: center;"><span class="color-block c-purple"></span>繳費期限 (預設次月5號)</label>
+      <input type="date" id="globalDeadline" onchange="showToast('繳費期限已更新')" style="margin-top: 8px;">
+    </div>
+  </div>
+  
+  <!-- 右：分校列印資訊 -->
+  <div style="flex: 1.2;">
+    <div style="background: #fffbeb; padding: 15px; border-radius: 8px; border: 1px solid #fde68a; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center;">
+      <label style="font-weight: 700; color: #b45309; display:flex; justify-content:space-between; margin-bottom: 10px; align-items: center;">
+        <span style="display: flex; align-items: center;"><span class="color-block c-orange"></span>分校列印資訊</span>
+        <span style="font-size:0.8em; font-weight:normal;">(自動儲存)</span>
+      </label>
+      <input type="text" id="settingPhone" placeholder="聯絡電話" onchange="saveSettings()" style="margin-bottom: 10px; border-color: #fcd34d;">
+      <textarea id="settingBank" rows="2" placeholder="請輸入轉帳銀行與帳號資料..." onchange="saveSettings()" style="border-color: #fcd34d; resize: none;"></textarea>
+    </div>
+  </div>
+
+</div>
+
+<div class="main-container">
+  <div class="list-section">
+    <h3 style="margin: 0 0 10px 0; display: flex; align-items: center;"><span class="color-block c-blue"></span>需開單學生列表 <span style="font-size: 0.75em; color: #64748b; font-weight: normal; margin-left: 10px;">(即將開單者已自動置頂)</span></h3>
+    <table class="student-table" id="studentTable">
+      <thead>
+        <tr>
+          <th style="width: 30px;"><input type="checkbox" id="selectAll" checked onchange="toggleAll(this)"></th>
+          <!-- 全選轉全科 -->
+          <th style="width: 50px;"><input type="checkbox" id="selectAllForce" onchange="toggleAllForceFull(this.checked)" title="全選/取消轉全科"> 轉全科</th>
+          <th>姓名</th>
+          <th>科目</th>
+          <th>原到期日</th>
+          <th>本期迄月</th>
+          <th>本期學費</th>
+          <th>年繳迄月</th>
+          <th>年繳學費</th>
+        </tr>
+      </thead>
+      <tbody id="studentListBody">
+        <tr><td colspan="9" style="text-align:center; padding: 40px; color: #94a3b8; font-size: 1.1em;">請先於左上方上傳名單 Excel</td></tr>
+      </tbody>
+    </table>
+    
+    <div class="export-actions">
+      <button class="btn btn-export-excel" id="btnExportExcel" style="display:none;" onclick="exportSummaryExcel()">下載櫃檯對帳總表</button>
+      <button class="btn btn-print" id="btnPrintAll" style="display:none;" onclick="printAllBills()">一鍵直接列印全部學費單</button>
+    </div>
+  </div>
+
+  <div class="calc-section" id="calcPanel">
+    <div id="calcOverlay">請點選左側學生列表開始微調</div>
+    <h3 style="margin-top: 0; color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; display: flex; align-items: center;"><span class="color-block c-pink"></span><span id="calcTitle">學生姓名</span></h3>
+    
+    <div class="form-group">
+      <label>繳費期間 (起月 ~ 迄月)：</label>
+      <div style="display: flex; gap: 5px; align-items: center;">
+        <input type="month" id="calcStart"> 
+        <span style="font-weight: bold; color: #94a3b8;">~</span> 
+        <input type="month" id="calcEnd">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>逐月計費明細 (自動展開，可個別調整科目)：</label>
+      <div class="breakdown-container">
+        <table class="breakdown-table">
+          <thead>
+            <tr>
+              <th style="width: 35px;">#</th>
+              <th style="width: 70px;">期別</th>
+              <th>年月</th>
+              <th>目前年級</th>
+              <th>科目級距</th>
+              <th>單月小計</th>
+            </tr>
+          </thead>
+          <tbody id="monthlyBreakdownBody"></tbody>
+        </table>
+      </div>
+      <div id="breakdownSubtotal" style="text-align: right; font-weight: bold; color: #0f172a; font-size: 0.95em; line-height: 1.8;"></div>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+      <div class="form-group" style="flex: 1;">
+        <label>前期溢繳：</label>
+        <input type="number" id="calcOverpay" value="0" min="0">
+      </div>
+      <div class="form-group" style="flex: 1;">
+        <label>舊生優待：</label>
+        <input type="number" id="calcBaseDiscount" min="0" step="100">
+      </div>
+      <div class="form-group" style="flex: 2;">
+        <label>特例備註 (顯示)：</label>
+        <input type="text" id="calcDiscountNote" placeholder="例如：因為兄弟姊妹，所以學費優待 1,000">
+      </div>
+    </div>
+    
+    <div style="margin-top: 10px;">
+      <button class="btn btn-action" onclick="recalcAndSave()" style="width: 100%; padding: 12px;">重新計算並儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let rawUploadedData = null; 
+let studentsData = [];
+let currentEditingIndex = -1;
+let globalDeadlineStr = "";
+
+const subjectOptions = ["1科", "2科", "3科", "4科", "全科"];
+
+const tableFuture = {
+  1: { '1-4': [3500, 6000, 8000, 8500, 8500], '5月': [3500, 6000, 8000, 8500, 8500], '7-8': [3500, 6000, 8000, 8500, 8500], '9-12': [3500, 6000, 8000, 8500, 8500] },
+  2: { '1-4': [3500, 6000, 8000, 8500, 8500], '5月': [3500, 6000, 8000, 8500, 8500], '7-8': [3500, 6000, 8000, 8500, 8500], '9-12': [3500, 6000, 8000, 8500, 8500] },
+  3: { '1-4': [5000, 8000, 10000, 12000, 13000], '5月': [3000, 5000, 6000, 7000, 8000], '7-8': [5000, 8000, 10000, 12000, 14000], '9-12': [4000, 7000, 9000, 10000, 11000] }
+};
+
+window.onload = () => {
+  const now = new Date();
+  document.getElementById('systemMonthLabel').innerText = `系統判定月份：${now.getFullYear()} 年 ${now.getMonth() + 1} 月`;
+  setupDefaultDeadline(now);
+  loadSettings();
+};
+
+function showToast(msg, isError = false) {
+  let toast = document.getElementById('toast');
+  toast.innerText = msg;
+  toast.style.background = isError ? '#ef4444' : '#10b981';
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 3000);
+}
+
+function loadSettings() {
+  document.getElementById('settingPhone').value = localStorage.getItem('lc_phone') || '8285-5455';
+  document.getElementById('settingBank').value = localStorage.getItem('lc_bank') || '中國信託（822）\n帳號 7385-4005-8091';
+}
+
+function saveSettings() {
+  localStorage.setItem('lc_phone', document.getElementById('settingPhone').value);
+  localStorage.setItem('lc_bank', document.getElementById('settingBank').value);
+  showToast("分校設定已自動儲存");
+}
+
+function setupDefaultDeadline(now) {
+  let nextMonth = now.getMonth() + 1;
+  let year = now.getFullYear();
+  if (nextMonth > 11) { nextMonth = 0; year++; }
+  let targetDate = new Date(year, nextMonth, 5);
+  let dayOfWeek = targetDate.getDay();
+  if (dayOfWeek === 6) targetDate.setDate(4);
+  if (dayOfWeek === 0) targetDate.setDate(3);
+  const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(targetDate.getDate()).padStart(2, '0');
+  globalDeadlineStr = `${targetDate.getFullYear()}-${mm}-${dd}`;
+  document.getElementById('globalDeadline').value = globalDeadlineStr;
+}
+
+function getFuzzyVal(row, possibleKeys, defaultVal = "") {
+  for (let key in row) {
+    let cleanKey = key.replace(/\s+/g, ''); 
+    if (possibleKeys.some(pk => cleanKey.includes(pk))) return row[key];
+  }
+  return defaultVal;
+}
+
+function parseTaiwanDate(val) {
+  if (!val) return null;
+  if (typeof val === 'number') return new Date(Math.round((val - 25569) * 86400 * 1000));
+  let str = String(val).trim();
+  if (str.includes("會考")) return "會考";
+  let match = str.match(/^(\d+)[/-](\d+)[/-](\d+)$/);
+  if (match) {
+    let y = parseInt(match[1]); let m = parseInt(match[2]) - 1; let d = parseInt(match[3]);
+    if (y < 1000) y += 1911; 
+    return new Date(y, m, d);
+  }
+  let d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+  return null;
+}
+
+function toROCFullFormat(dateObj) {
+  if(!dateObj || isNaN(dateObj)) return "";
+  return `${dateObj.getFullYear() - 1911}年${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
+}
+function toROCEndOfMonthFormat(dateObj) {
+  if(!dateObj || isNaN(dateObj)) return "";
+  let lastDay = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0);
+  return `${lastDay.getFullYear() - 1911}年${lastDay.getMonth() + 1}月${lastDay.getDate()}日`;
+}
+function toROCSlashFormat(dateObj) {
+  if(!dateObj || isNaN(dateObj)) return "";
+  return `${dateObj.getFullYear() - 1911}/${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+}
+function toROCSlashFormatEnd(dateObj) {
+  if(!dateObj || isNaN(dateObj)) return "";
+  let lastDay = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0);
+  return `${lastDay.getFullYear() - 1911}/${lastDay.getMonth() + 1}/${lastDay.getDate()}`;
+}
+function toROCFormat(dateObj) {
+  if(!dateObj || isNaN(dateObj)) return "未標示";
+  return `${dateObj.getFullYear() - 1911}/${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+}
+
+function getEffectiveGrade(baseGrade, startD, curD) {
+  let startSchoolYear = startD.getFullYear() - ((startD.getMonth() + 1) < 7 ? 1 : 0);
+  let curSchoolYear = curD.getFullYear() - ((curD.getMonth() + 1) < 7 ? 1 : 0);
+  let diff = curSchoolYear - startSchoolYear;
+  let effGrade = baseGrade + diff;
+  return effGrade > 3 ? 3 : (effGrade < 1 ? 1 : effGrade);
+}
+
+function formatEndMonthStr(dateObj, baseGrade, startD) {
+  let y = dateObj.getFullYear() - 1911;
+  let m = dateObj.getMonth() + 1;
+  let effGrade = getEffectiveGrade(baseGrade, startD, dateObj);
+  if (effGrade === 3 && m === 5) return `${y}-${m}會考`;
+  return `${y}-${m}`;
+}
+
+function getYearPeriodStr(s, yearEndD) {
+  let startStr = toROCSlashFormat(s.startDateObj);
+  let endStr = toROCSlashFormatEnd(yearEndD);
+  let str = `(${startStr}~${endStr}`;
+  if (s.grade === 2 && s.monthlyData.some(m => m.effGrade === 3)) {
+      str += " 含七月起國三總複習班";
+  }
+  str += `)`;
+  return str;
+}
+
+// 智慧計費引擎：國三國社拆分判定
+function mapCourseToSubIdx(courseStr, grade) {
+  if (!courseStr) return 4;
+  let str = String(courseStr).trim();
+  if (str.includes("全")) return 4;
+  if (str.includes("4") || str.includes("四")) return 3;
+  if (str.includes("3") || str.includes("三")) return 2;
+  if (str.includes("2") || str.includes("二") || str.includes("兩") || str.includes("雙")) return 1;
+  if (str.includes("1") || str.includes("一") || str.includes("單")) return 0;
+
+  let count = 0;
+  let temp = str;
+  
+  // 優先扣除標準全名雙字科目
+  let singleSubjects = ["國文", "英文", "數學", "自然", "社會", "理化", "地科", "生物", "生科"];
+  singleSubjects.forEach(ss => { 
+      if (temp.includes(ss)) { 
+          count++; 
+          temp = temp.replace(new RegExp(ss, 'g'), ''); 
+      } 
+  });
+
+  // 處理特殊簡寫：國社 (國一/二算1科，國三算2科)
+  if (temp.includes("國社")) {
+      count += (grade === 3 ? 2 : 1);
+      temp = temp.replace(/國社/g, '');
+  }
+  
+  // 處理特殊簡寫：文 (因前面已消除國文/英文，剩下的文代表文科綜合，國一/二算1科，國三算2科)
+  if (temp.includes("文")) {
+      count += (grade === 3 ? 2 : 1);
+      temp = temp.replace(/文/g, '');
+  }
+
+  // 處理剩下的單字簡寫
+  let otherSingles = ["國", "英", "數", "自", "社", "理", "地", "生"];
+  otherSingles.forEach(ss => {
+      if (temp.includes(ss)) { 
+          count++; 
+          temp = temp.replace(new RegExp(ss, 'g'), ''); 
+      }
+  });
+
+  if (count <= 1) return 0;
+  if (count === 2) return 1;
+  if (count === 3) return 2;
+  if (count === 4) return 3;
+  return 4; 
+}
+
+// 智慧展開引擎：遇到文/國社，自動展開為優雅全名
+function expandCourseNames(str) {
+  if (!str) return "全科";
+  if (str.includes("全")) return "全科";
+  let res = [];
+  let temp = str;
+
+  let hasGuoShe = false;
+  if (temp.includes("國文")) { res.push("國文"); temp = temp.replace(/國文/g, ""); }
+  if (temp.includes("英文")) { res.push("英文"); temp = temp.replace(/英文/g, ""); }
+  if (temp.includes("數學")) { res.push("數學"); temp = temp.replace(/數學/g, ""); }
+  if (temp.includes("自然")) { res.push("自然"); temp = temp.replace(/自然/g, ""); }
+  if (temp.includes("社會")) { res.push("社會"); temp = temp.replace(/社會/g, ""); }
+  if (temp.includes("理化")) { res.push("理化"); temp = temp.replace(/理化/g, ""); }
+  if (temp.includes("地科")) { res.push("地科"); temp = temp.replace(/地科/g, ""); }
+  if (temp.includes("生物")) { res.push("生物"); temp = temp.replace(/生物/g, ""); }
+  
+  if (temp.includes("國社")) { hasGuoShe = true; temp = temp.replace(/國社/g, ""); }
+  if (temp.includes("文")) { hasGuoShe = true; temp = temp.replace(/文/g, ""); }
+
+  // 展開為雙科全名
+  if (hasGuoShe) {
+      if (!res.includes("國文")) res.push("國文");
+      if (!res.includes("社會")) res.push("社會");
+  }
+
+  // 處理單字簡寫
+  if (temp.includes("國") && !res.includes("國文")) res.push("國文");
+  if (temp.includes("英") && !res.includes("英文")) res.push("英文");
+  if (temp.includes("數") && !res.includes("數學")) res.push("數學");
+  if (temp.includes("自") && !res.includes("自然")) res.push("自然");
+  if (temp.includes("社") && !res.includes("社會")) res.push("社會");
+  if (temp.includes("理") && !res.includes("理化")) res.push("理化");
+  if (temp.includes("地") && !res.includes("地科")) res.push("地科");
+  if (temp.includes("生") && !res.includes("生物")) res.push("生物");
+  
+  if (res.length > 0) return res.join("、");
+  return str;
+}
+
+document.getElementById('excelUpload').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (typeof XLSX === 'undefined') {
+    document.getElementById('studentListBody').innerHTML = `
+      <tr><td colspan="9" style="text-align:left; padding: 40px; color: #dc2626; font-size: 1.1em; background: #fee2e2;">
+        <strong>系統載入失敗：</strong><br><br>
+        您的網路環境或防毒軟體可能阻擋了 Excel 處理套件的載入。<br>
+        請檢查網路連線後重新整理網頁。
+      </td></tr>`;
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      
+      let rawArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      let headerIdx = rawArray.findIndex(row => {
+        if (!row || !Array.isArray(row)) return false;
+        return row.some(cell => {
+          if (cell === null || cell === undefined) return false;
+          let text = String(cell).replace(/\s+/g, '');
+          return text === '姓名' || text === '學生姓名';
+        });
+      });
+      
+      if (headerIdx === -1) headerIdx = 0; 
+      
+      rawUploadedData = XLSX.utils.sheet_to_json(worksheet, { range: headerIdx, raw: true });
+      
+      let globalGrade = parseInt(document.getElementById('globalGradeSelect').value);
+      processExcelData(rawUploadedData, globalGrade);
+      showToast("名單讀取成功！已預設套用設定計算。");
+
+    } catch(err) { 
+      console.error(err);
+      showToast("讀取 Excel 發生異常，請查看下方詳細診斷！", true);
+      document.getElementById('studentListBody').innerHTML = `
+        <tr><td colspan="9" style="text-align:left; padding: 40px; color: #dc2626; font-size: 1.1em; background: #fee2e2;">
+          <strong>系統讀取中斷，錯誤診斷報告：</strong><br><br>
+          ${err.message || err}<br><br>
+          <span style="font-size:0.85em; color:#991b1b; display:block; margin-top:10px;">如果持續發生，請將以下技術細節截圖給開發人員：<br>${err.stack || '無可用堆疊訊息'}</span>
+        </td></tr>`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+// 當切換年級時重新處理
+function triggerReprocess() {
+  let globalGrade = parseInt(document.getElementById('globalGradeSelect').value);
+  if (isNaN(globalGrade)) return;
+
+  if (studentsData.length === 0 && rawUploadedData) {
+      processExcelData(rawUploadedData, globalGrade);
+      showToast("處理成功！");
+  } else if (studentsData.length > 0) {
+      studentsData.forEach(s => {
+        s.grade = globalGrade;
+        let endD = new Date(s.startDateObj.getFullYear(), s.startDateObj.getMonth() + 11, 1);
+        s.monthlyData = generateMonthlyData(s.startDateObj, endD, s.grade, s.rawExcelCourse);
+        runCalculator(s);
+      });
+      renderList();
+      if (currentEditingIndex >= 0) openCalcPanel(currentEditingIndex);
+      showToast("設定已更新，全部重新計算完畢！");
+  }
+}
+
+function toggleAllForceFull(isChecked) {
+  document.getElementById('selectAllForce').checked = isChecked;
+  studentsData.forEach(s => {
+    if (s.status !== "skip") s.forceFull = isChecked;
+  });
+  renderList();
+}
+
+function updateForceFull(idx, isChecked) {
+  studentsData[idx].forceFull = isChecked;
+}
+
+function generateMonthlyData(startD, endD, grade, defaultCourseStr) {
+  let data = [];
+  let cur = new Date(startD.getFullYear(), startD.getMonth(), 1);
+  // 注意：這裡在每月生成時，就會呼叫動態權重解析引擎
+  let defSubIdx = mapCourseToSubIdx(defaultCourseStr, grade);
+  let maxEnd = new Date(endD);
+  let startSchoolYear = startD.getFullYear() - ((startD.getMonth() + 1) < 7 ? 1 : 0);
+
+  while(cur <= maxEnd) {
+    let effGrade = getEffectiveGrade(grade, startD, cur);
+    if (effGrade >= 3) {
+      let g3SchoolYear = startSchoolYear + (3 - grade);
+      let examYear = g3SchoolYear + 1;
+      if (cur.getFullYear() > examYear || (cur.getFullYear() === examYear && (cur.getMonth() + 1) > 5)) break; 
+    }
+    
+    // 如果因為跨年級導致有效年級變成國三，就必須重新動態解析該月的權重
+    let currentMonthSubIdx = mapCourseToSubIdx(defaultCourseStr, effGrade);
+    
+    data.push({ date: new Date(cur), courseStr: defaultCourseStr, subIdx: currentMonthSubIdx, fee: 0, cat: "", effGrade: effGrade });
+    cur.setMonth(cur.getMonth() + 1);
+    if (data.length >= 24) break; 
+  }
+  return data;
+}
+
+function processExcelData(rawJson, globalGrade) {
+  const now = new Date();
+  const targetExpMonth = now.getMonth() + 1; 
+  
+  studentsData = rawJson.map((row, index) => {
+    let rawDateVal = getFuzzyVal(row, ["學費", "到期日"]); 
+    let expDate = parseTaiwanDate(rawDateVal);
+    let isHuikao = expDate === "會考" || String(rawDateVal).includes("會考");
+    let status = isHuikao ? "skip" : "ready";
+    let shouldCheck = false;
+    let startD;
+    
+    if (expDate instanceof Date && !isNaN(expDate.getTime())) {
+      if (expDate.getMonth() === targetExpMonth) shouldCheck = true;
+      startD = new Date(expDate); startD.setDate(startD.getDate() + 1); 
+    } else {
+      startD = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    }
+    
+    let endD = new Date(startD.getFullYear(), startD.getMonth() + 11, 1);
+    let noteStr = String(getFuzzyVal(row, ["備注", "備註"], ""));
+    let siblingDiscount = (noteStr.includes("兄弟") || noteStr.includes("姊妹")) ? 1000 : 0;
+    let discountNoteText = siblingDiscount > 0 ? "因為兄弟姊妹，所以學費優待 1,000" : "";
+    let overpayMatch = noteStr.match(/溢繳.*?(\d+)/);
+    let overpayAmt = overpayMatch ? parseInt(overpayMatch[1], 10) : 0;
+    
+    let rawCourseText = getFuzzyVal(row, ["科目"], "全科");
+    let originalCourse = String(rawCourseText).trim(); 
+    if (!originalCourse) originalCourse = "全科";
+    
+    let isReady = shouldCheck && !isHuikao;
+    let isNotFull = originalCourse !== "全科";
+    let forceFull = isReady && isNotFull; 
+
+    let studentObj = {
+      _id: index,
+      selected: isReady,
+      forceFull: forceFull, 
+      status: status,
+      name: getFuzzyVal(row, ["姓名", "學生姓名"], "未知"),
+      grade: globalGrade,
+      originalRawCourse: originalCourse, 
+      rawExcelCourse: originalCourse, 
+      rawExpDate: isHuikao ? "會考" : toROCFormat(expDate),
+      startDateObj: startD,
+      overpay: overpayAmt,
+      siblingDiscount: siblingDiscount,
+      discountNote: discountNoteText,
+      customBaseDiscount: null, 
+      monthlyData: [], 
+      calculated: {} 
+    };
+    
+    studentObj.monthlyData = generateMonthlyData(startD, endD, globalGrade, studentObj.rawExcelCourse);
+    return studentObj;
+  });
+  
+  studentsData.sort((a, b) => {
+    if (a.selected && !b.selected) return -1;
+    if (!a.selected && b.selected) return 1;
+    if (a.status === 'ready' && b.status === 'skip') return -1;
+    if (a.status === 'skip' && b.status === 'ready') return 1;
+    return 0;
+  });
+
+  studentsData.forEach((s, idx) => { s._id = idx; });
+  studentsData.forEach(s => runCalculator(s));
+  
+  renderList();
+  document.getElementById('btnExportExcel').style.display = 'block';
+  document.getElementById('btnPrintAll').style.display = 'block';
+  
+  let firstReady = studentsData.findIndex(s => s.status !== "skip");
+  if(firstReady >= 0) openCalcPanel(firstReady);
+}
+
+function runCalculator(s) {
+  if (s.status === "skip") return;
+  
+  let t1Total = 0; let t2Total = 0; 
+  let totalMonths = s.monthlyData.length;
+  
+  let isMixedCourse = false;
+  if (totalMonths > 0) {
+    let firstSub = s.monthlyData[0].subIdx;
+    isMixedCourse = s.monthlyData.some(m => m.subIdx !== firstSub);
+  }
+  
+  let fm = totalMonths > 0 ? (s.monthlyData[0].date.getMonth() + 1) : 0;
+  let isG3Special = (s.grade === 3 && fm >= 9);
+  
+  let t1Months = isG3Special ? totalMonths : Math.min(totalMonths, 6);
+
+  s.monthlyData.forEach((m, i) => {
+    let month = m.date.getMonth() + 1;
+    let cat = (month === 5) ? '5月' : ((month >= 7 && month <= 8) ? '7-8' : ((month >= 9) ? '9-12' : '1-4'));
+    let fee = tableFuture[m.effGrade][cat][m.subIdx] || 0;
+    m.fee = fee; m.cat = cat;
+    
+    if (isG3Special) {
+        t1Total += fee; 
+    } else {
+        if (i < 6) t1Total += fee; else t2Total += fee;
+    }
+  });
+
+  let subCounts = {0:0, 1:0, 2:0, 3:0, 4:0};
+  s.monthlyData.forEach((m, i) => { if (i < t1Months) subCounts[m.subIdx]++; });
+
+  let maxCount = -1; let modeSubIdx = 4; 
+  for (let i = 0; i <= 4; i++) {
+    if (subCounts[i] >= maxCount && subCounts[i] > 0) { maxCount = subCounts[i]; modeSubIdx = i; }
+  }
+
+  let autoBaseDiscount = (modeSubIdx >= 2) ? 2000 : 1000; 
+  let baseDiscount = (s.customBaseDiscount !== null && s.customBaseDiscount !== undefined) ? s.customBaseDiscount : autoBaseDiscount;
+  
+  let halfEndD = totalMonths > 0 ? s.monthlyData[t1Months - 1].date : s.startDateObj;
+  let yearEndD = totalMonths > 0 ? s.monthlyData[totalMonths - 1].date : s.startDateObj;
+
+  let lateFee = t1Total - s.overpay - s.siblingDiscount;
+  if(lateFee < 0) lateFee = 0;
+
+  let inTimeFee = lateFee - baseDiscount;
+  if(inTimeFee < 0) inTimeFee = 0;
+  
+  let yearTotal = t1Total + t2Total;
+  let yearFinal = 0, yearDiscount = 0;
+  let yearPaymentStr = "";
+  
+  let isEligibleForYearDiscount = false;
+  if (isG3Special) {
+      isEligibleForYearDiscount = false; 
+  } else if (totalMonths >= 12) {
+      isEligibleForYearDiscount = true;
+  } else if (totalMonths > 0) {
+      let firstM = s.monthlyData[0]; let lastM = s.monthlyData[totalMonths - 1];
+      let firstMonth = firstM.date.getMonth() + 1; let lastMonth = lastM.date.getMonth() + 1;
+      if (firstM.effGrade === 3 && (firstMonth === 7 || firstMonth === 8) && lastM.effGrade === 3 && lastMonth === 5) isEligibleForYearDiscount = true;
+  }
+
+  if (isEligibleForYearDiscount) {
+      let discounted = Math.ceil((yearTotal * 0.9) / 100) * 100;
+      discounted = discounted - s.overpay - s.siblingDiscount;
+      if (discounted < 0) discounted = 0;
+      yearFinal = discounted; 
+      yearDiscount = yearTotal - yearFinal;
+      yearPaymentStr = getYearPeriodStr(s, yearEndD);
+  }
+
+  let termEndMonthIndex = Math.min(totalMonths, t1Months) - 1;
+  let termEndDateObj = totalMonths > 0 ? s.monthlyData[termEndMonthIndex].date : s.startDateObj;
+
+  s.calculated = {
+    totalMonths: totalMonths,
+    t1Months: t1Months, 
+    isMixedCourse: isMixedCourse,
+    halfEndStr: totalMonths > 0 ? formatEndMonthStr(halfEndD, s.grade, s.startDateObj) : "-",
+    yearEndStr: isEligibleForYearDiscount ? formatEndMonthStr(yearEndD, s.grade, s.startDateObj) : ((s.monthlyData.some(m => m.effGrade === 3) || isG3Special) ? "無年繳" : "-"),
+    t1Total: t1Total,
+    t2Total: t2Total,
+    baseDiscount: baseDiscount,
+    inTimeFee: inTimeFee,
+    lateFee: lateFee,
+    finalToPay: inTimeFee, 
+    yearTotal: yearTotal,
+    yearFinal: yearFinal,
+    yearDiscount: yearDiscount,
+    yearPaymentStr: yearPaymentStr,
+    termEndDateObj: termEndDateObj
+  };
+}
+
+function renderList() {
+  const tbody = document.getElementById('studentListBody');
+  tbody.innerHTML = "";
+  studentsData.forEach((s, idx) => {
+    let tr = document.createElement('tr');
+    if (currentEditingIndex === idx) tr.classList.add('active');
+    
+    let chkHtml = s.status === "skip" ? `<input type="checkbox" disabled>` : `<input type="checkbox" class="stu-chk" data-id="${idx}" ${s.selected ? 'checked' : ''} onchange="updateSelection(${idx}, this.checked)">`;
+    let forceChkHtml = s.status === "skip" ? `<input type="checkbox" disabled>` : `<input type="checkbox" class="force-chk" data-id="${idx}" ${s.forceFull ? 'checked' : ''} onchange="updateForceFull(${idx}, this.checked)">`;
+
+    let specialBadge = "";
+    if (s.overpay > 0) specialBadge += `<span class="special-badge badge-overpay">溢繳</span>`;
+    if (s.siblingDiscount > 0) specialBadge += `<span class="special-badge badge-sibling">兄弟</span>`;
+
+    let yearEndDisplay = "-";
+    let yearFinalDisplay = "-";
+    
+    if (s.status !== "skip") {
+      if (s.calculated.yearEndStr === "無年繳") {
+        let noYearHtml = `<span style="color:#94a3b8; font-size:0.85em; font-weight:normal;">無年繳</span>`;
+        yearEndDisplay = noYearHtml;
+        yearFinalDisplay = noYearHtml;
+      } else {
+        yearEndDisplay = s.calculated.yearEndStr;
+        if (s.calculated.yearFinal > 0) yearFinalDisplay = `${s.calculated.yearFinal.toLocaleString()}`; 
+      }
+    }
+
+    let courseDisplay = s.rawExcelCourse; 
+    if (s.calculated.isMixedCourse) {
+        courseDisplay = `<span style="color:#f59e0b;" title="各月科目設定不一致">${courseDisplay}</span>`;
+    }
+
+    tr.innerHTML = `
+      <td>${chkHtml}</td>
+      <td style="text-align:center;">${forceChkHtml}</td>
+      <td><strong>${s.name}</strong></td>
+      <td><span style="color:#0369a1; font-weight:bold;">${courseDisplay}</span></td>
+      <td style="color:#64748b;">${s.rawExpDate}</td>
+      <td style="font-weight:bold;">${s.status === "skip" ? "-" : s.calculated.halfEndStr}</td>
+      <td style="color:#d35400; font-weight:800;">${s.status === "skip" ? "-" : s.calculated.finalToPay.toLocaleString()}${specialBadge}</td>
+      <td style="color:#475569; font-weight:bold;">${yearEndDisplay}</td>
+      <td style="color:#15803d; font-weight:800;">${yearFinalDisplay}</td>
+    `;
+    tr.onclick = (e) => { if(e.target.type !== 'checkbox') openCalcPanel(idx); };
+    tbody.appendChild(tr);
+  });
+}
+
+function toggleAll(el) { document.querySelectorAll('.stu-chk:not([disabled])').forEach(chk => { chk.checked = el.checked; studentsData[chk.dataset.id].selected = el.checked; }); }
+function updateSelection(idx, isChecked) { studentsData[idx].selected = isChecked; }
+
+function openCalcPanel(idx) {
+  currentEditingIndex = idx;
+  const s = studentsData[idx];
+  
+  document.getElementById('calcOverlay').style.display = 'none';
+  document.getElementById('calcTitle').innerText = s.name;
+  
+  if(s.monthlyData.length > 0) {
+    let startStr = `${s.monthlyData[0].date.getFullYear()}-${String(s.monthlyData[0].date.getMonth()+1).padStart(2,'0')}`;
+    let endStr = `${s.monthlyData[s.monthlyData.length-1].date.getFullYear()}-${String(s.monthlyData[s.monthlyData.length-1].date.getMonth()+1).padStart(2,'0')}`;
+    document.getElementById('calcStart').value = startStr;
+    document.getElementById('calcEnd').value = endStr;
+  }
+  
+  const tbody = document.getElementById('monthlyBreakdownBody');
+  tbody.innerHTML = "";
+  if(s.status !== "skip") {
+    s.monthlyData.forEach((m, i) => {
+      let tr = document.createElement('tr');
+      let isSecondTerm = i >= s.calculated.t1Months;
+      let termBadgeHtml = isSecondTerm ? `<span class="term-badge term-2">第二期</span>` : `<span class="term-badge term-1">第一期</span>`;
+      if (isSecondTerm) { tr.style.background = "#fcfdfa"; if (i === s.calculated.t1Months) tr.style.borderTop = "2px dashed #10b981"; }
+      
+      let mStrKey = `${m.date.getFullYear()}-${String(m.date.getMonth()+1).padStart(2,'0')}`;
+      let selectHtml = `<select class="m-sub-sel" data-mstr="${mStrKey}" style="padding: 4px; font-size:0.9em; width:auto;">`;
+      
+      subjectOptions.forEach((opt, optIdx) => {
+        let isSel = (optIdx === m.subIdx) ? "selected" : "";
+        selectHtml += `<option value="${optIdx}" ${isSel}>${opt}</option>`;
+      });
+      selectHtml += `</select>`;
+      
+      let gradeText = `國${m.effGrade === 1 ? '一' : (m.effGrade === 2 ? '二' : '三')}`;
+      if (m.effGrade > s.grade) {
+          gradeText = `<span style="color:#ef4444; border:1px solid #ef4444; padding:2px 4px; border-radius:4px; font-weight:bold; font-size:0.9em;">${gradeText}</span>`;
+      }
+      
+      tr.innerHTML = `
+        <td style="color:#64748b; font-weight:bold;">${i + 1}</td>
+        <td>${termBadgeHtml}</td>
+        <td><strong>${m.date.getFullYear() - 1911}-${m.date.getMonth() + 1}</strong></td>
+        <td>${gradeText}</td>
+        <td>${selectHtml}</td>
+        <td style="font-weight:bold; color:#d35400;">${m.fee.toLocaleString()}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('breakdownSubtotal').innerHTML = `
+    第一期小計：${s.calculated.t1Total ? s.calculated.t1Total.toLocaleString() : 0} <br>
+    第二期小計：${s.calculated.t2Total ? s.calculated.t2Total.toLocaleString() : 0} <br>
+    原始總合計：${s.calculated.yearTotal ? s.calculated.yearTotal.toLocaleString() : 0}
+  `;
+  
+  document.getElementById('calcOverpay').value = s.overpay;
+  document.getElementById('calcBaseDiscount').value = s.calculated.baseDiscount;
+  document.getElementById('calcDiscountNote').value = s.discountNote;
+  renderList();
+}
+
+function recalcAndSave() {
+  if (currentEditingIndex < 0) return;
+  const s = studentsData[currentEditingIndex];
+  
+  let newStartStr = document.getElementById('calcStart').value;
+  let newEndStr = document.getElementById('calcEnd').value;
+  let newStartD = new Date(newStartStr + "-01");
+  let newEndD = new Date(newEndStr + "-01");
+  
+  if (isNaN(newStartD) || isNaN(newEndD) || newStartD > newEndD) { showToast("起迄期間錯誤！請確保起月小於迄月。", true); return; }
+
+  let dropdownMap = {};
+  document.querySelectorAll('.m-sub-sel').forEach(sel => {
+    dropdownMap[sel.getAttribute('data-mstr')] = parseInt(sel.value); 
+  });
+
+  s.startDateObj = newStartD;
+  s.monthlyData = generateMonthlyData(newStartD, newEndD, s.grade, s.rawExcelCourse);
+  
+  s.monthlyData.forEach(m => {
+    let mStrKey = `${m.date.getFullYear()}-${String(m.date.getMonth()+1).padStart(2,'0')}`;
+    if (dropdownMap[mStrKey] !== undefined) {
+      m.subIdx = dropdownMap[mStrKey];
+      m.courseStr = subjectOptions[m.subIdx]; 
+    }
+  });
+  
+  s.overpay = parseInt(document.getElementById('calcOverpay').value) || 0;
+  
+  let customBaseValue = parseInt(document.getElementById('calcBaseDiscount').value);
+  if (!isNaN(customBaseValue)) {
+      s.customBaseDiscount = customBaseValue;
+  } else {
+      s.customBaseDiscount = null;
+  }
+  
+  s.discountNote = document.getElementById('calcDiscountNote').value;
+  
+  runCalculator(s); openCalcPanel(currentEditingIndex); showToast(`重新計算並儲存成功！`);
+}
+
+function getActiveStudents() { return studentsData.filter(s => s.selected && s.status !== "skip"); }
+
+function createFullSubjectClone(s) {
+  let clone = Object.assign({}, s); 
+  clone.startDateObj = new Date(s.startDateObj); 
+  clone.rawExcelCourse = "全科";
+  let endD = new Date(clone.startDateObj.getFullYear(), clone.startDateObj.getMonth() + 11, 1);
+  clone.monthlyData = generateMonthlyData(clone.startDateObj, endD, clone.grade, clone.rawExcelCourse);
+  runCalculator(clone); 
+  return clone;
+}
+
+// 🚀 旗艦版：純淨 PDF 像素級排版引擎
+function printAllBills() {
+  try {
+    const activeList = getActiveStudents();
+    if (activeList.length === 0) return showToast("請至少勾選一位學生！", true);
+
+    let printTasks = [];
+    activeList.forEach(s => {
+      printTasks.push(s); 
+      if (s.forceFull && s.originalRawCourse !== "全科") {
+        printTasks.push(createFullSubjectClone(s)); 
+      }
+    });
+
+    globalDeadlineStr = document.getElementById('globalDeadline').value;
+    let deadlineDate = new Date(globalDeadlineStr);
+    let printDeadlineStr = `${toROCFormat(deadlineDate).split('/')[1]}月${toROCFormat(deadlineDate).split('/')[2]}日`;
+    
+    let phoneStr = document.getElementById('settingPhone').value || "8285-5455";
+    let bankStr = document.getElementById('settingBank').value || "中國信託（822）\n帳號 7385-4005-8091";
+    
+    let htmlContent = `
+      <html>
+      <head>
+        <title>批次列印學費單</title>
+        <style>
+          @media print {
+            @page { margin: 10mm 15mm 15mm 15mm; }
+            body { background: white; -webkit-print-color-adjust: exact; }
+          }
+          body { font-family: 'BiauKai', 'DFKai-SB', '標楷體', serif; color: #000; margin: 0; padding: 0; font-size: 14pt;}
+          .page { page-break-after: always; padding: 15px 30px; box-sizing: border-box; max-width: 850px; margin: 0 auto; }
+          .page:last-child { page-break-after: auto; }
+          h2 { text-align: center; letter-spacing: 2px; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px;}
+          
+          /* 懸掛縮排：確保第二行對齊第一行起點 */
+          .top-desc { line-height: 1.4; margin-bottom: 12px; text-align: justify; padding-left: 1.2em; text-indent: -1.2em; }
+          
+          table { width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 3px solid #000; }
+          th, td { border: 1px solid #000; padding: 10px 12px; }
+          th { width: 140px; text-align: center; font-weight: normal;}
+          
+          .fee-detail { line-height: 1.7; }
+          .footer-desc { line-height: 1.4; margin-top: 15px; }
+          /* 懸掛縮排 */
+          .footer-desc p { margin: 6px 0; padding-left: 1.2em; text-indent: -1.2em; }
+          
+          .bank-box { border: 3px solid #000; padding: 10px 15px; font-size: 1.3em; font-weight: bold; display: inline-block; margin-top: 10px; margin-bottom: 10px; text-indent: 0;}
+          .course-list { margin: 0; padding-left: 0; list-style: none; text-align: center; }
+        </style>
+      </head>
+      <body>
+    `;
+
+    printTasks.forEach(s => {
+      let courseDisplayHtml = "";
+      if (s.monthlyData.length > 0) {
+        let segments = [];
+        let maxCourseMonths = s.calculated.t1Months; 
+        
+        let currentSeg = { start: s.monthlyData[0].date, end: s.monthlyData[0].date, course: s.monthlyData[0].courseStr };
+        
+        for (let i = 1; i < maxCourseMonths && i < s.monthlyData.length; i++) {
+          let m = s.monthlyData[i];
+          if (m.courseStr === currentSeg.course) {
+            currentSeg.end = m.date;
+          } else {
+            segments.push(currentSeg);
+            currentSeg = { start: m.date, end: m.date, course: m.courseStr };
+          }
+        }
+        segments.push(currentSeg);
+
+        if (segments.length === 1) {
+          courseDisplayHtml = `<div style="text-align: center;">${expandCourseNames(segments[0].course)}</div>`;
+        } else {
+          courseDisplayHtml = `<ul class="course-list">`;
+          segments.forEach(seg => {
+             courseDisplayHtml += `<li>${toROCFullFormat(seg.start)}~${toROCEndOfMonthFormat(seg.end)} ${expandCourseNames(seg.course)}</li>`;
+          });
+          courseDisplayHtml += `</ul>`;
+        }
+      }
+
+      let printName = s.name.length >= 3 ? s.name.slice(-2) : s.name;
+
+      let feeLines = [];
+      let feeCounter = 1;
+      feeLines.push(`(${feeCounter++}) 學費 ${s.calculated.t1Total.toLocaleString()}`);
+      if (s.overpay > 0) feeLines.push(`(${feeCounter++}) 上期學費溢繳 ${s.overpay.toLocaleString()}`);
+      if (s.discountNote) feeLines.push(`(${feeCounter++}) ${s.discountNote}`);
+      
+      feeLines.push(`(${feeCounter++}) 因為舊生續補，且於期限內繳清，所以學費優待 ${s.calculated.baseDiscount.toLocaleString()}`);
+      
+      let inTimeCounterStr = `(${feeCounter++}) `;
+      let inTimeText = `${inTimeCounterStr}期限內繳清學費 ${s.calculated.inTimeFee.toLocaleString()}`;
+      let lateText = `<span style="visibility:hidden;">${inTimeCounterStr}</span>期限後繳清學費 ${s.calculated.lateFee.toLocaleString()}`;
+      
+      let feeHtmlStr = feeLines.join('<br>') + '<br><strong>' + inTimeText + '</strong><br>' + lateText;
+
+      let footerLines = [];
+      let footerCounter = 2; 
+      
+      if (s.calculated.yearFinal > 0) {
+        footerLines.push(`<p>${footerCounter++}. 學費如果選擇年繳${s.calculated.yearPaymentStr}，<br>則學費原價 ${s.calculated.t1Total.toLocaleString()} + ${s.calculated.t2Total.toLocaleString()} = ${s.calculated.yearTotal.toLocaleString()}，<strong>優待為 ${s.calculated.yearFinal.toLocaleString()}，共優待 ${s.calculated.yearDiscount.toLocaleString()}</strong>。</p>`);
+      }
+      footerLines.push(`<p>${footerCounter++}. 學費之繳交歡迎開即期支票，只是麻煩不要寫抬頭，謝謝。</p>`);
+      footerLines.push(`<p>${footerCounter++}. 學費之繳交歡迎轉帳，並請於聯絡本或來電告知<strong>帳號後五碼</strong>，謝謝。</p>`);
+
+      // 班別與年級升級處理 (包含 7 月的變化)
+      let classStrMap = { 1: '國一班', 2: '國二班', 3: '國三總複習班' };
+      let initialGrade = s.monthlyData.length > 0 ? s.monthlyData[0].effGrade : s.grade;
+      let classStr = classStrMap[initialGrade] || '未知班別';
+      
+      let transitionGrade = null;
+      for (let i = 0; i < s.calculated.t1Months && i < s.monthlyData.length; i++) {
+        let m = s.monthlyData[i];
+        if (m.date.getMonth() === 6 && m.effGrade !== initialGrade) { // 6 是 7 月的 index
+          transitionGrade = m.effGrade;
+          break;
+        }
+      }
+      if (transitionGrade) {
+        if (transitionGrade === 3) {
+          classStr += `、國三總複習班`;
+        } else {
+          classStr += `、7月起${classStrMap[transitionGrade]}`;
+        }
+      }
+
+      // 上課期間結束日期格式化 (若最後一月為國三5月，則強制顯示「5月會考」)
+      let termEndMonthIndex = Math.min(s.monthlyData.length, s.calculated.t1Months) - 1;
+      let lastMonthData = s.monthlyData.length > 0 ? s.monthlyData[termEndMonthIndex] : null;
+      let pdfEndDateStr = "";
+      if (lastMonthData && lastMonthData.effGrade === 3 && lastMonthData.date.getMonth() === 4) { // 4 是 5 月的 index
+          pdfEndDateStr = `${lastMonthData.date.getFullYear() - 1911}年5月會考`;
+      } else {
+          pdfEndDateStr = toROCEndOfMonthFormat(s.calculated.termEndDateObj);
+      }
+      
+      let firstDayROC = s.monthlyData.length > 0 ? toROCFullFormat(s.monthlyData[0].date) : "未標示";
+      
+      htmlContent += `
+        <div class="page">
+          <h2>林澈文理補習班繳費通知單</h2>
+          <div class="top-desc">
+            1. <strong>${printName}</strong>於林澈文理補習班下ㄧ期的課程從${firstDayROC}開始，其相關之繳費表如下，如有疑問，歡迎來電洽詢或到班指教。 <span style="float:right; text-indent:0;">電話：${phoneStr}</span>
+          </div>
+          <table>
+            <tr>
+              <th>班別</th>
+              <td style="text-align:center;">${classStr}</td>
+            </tr>
+            <tr>
+              <th>上課期間</th>
+              <td style="text-align:center;">${toROCFullFormat(s.startDateObj)}~${pdfEndDateStr}</td>
+            </tr>
+            <tr>
+              <th>課程內容</th>
+              <td>${courseDisplayHtml}</td>
+            </tr>
+            <tr>
+              <th>學費<br>(含講義費)</th>
+              <td class="fee-detail">
+                ${feeHtmlStr}
+              </td>
+            </tr>
+            <tr>
+              <th>繳費期限</th>
+              <td style="text-align:center; font-size:1.1em;"><strong>${printDeadlineStr}</strong></td>
+            </tr>
+          </table>
+          <div class="footer-desc">
+            ${footerLines.join('\n')}
+            <div class="bank-box">${bankStr.replace(/\n/g, '<br>')}</div>
+            <p style="text-indent:0; padding-left:0;">祝&nbsp;&nbsp;&nbsp;&nbsp;身體健康 萬事如意</p>
+          </div>
+        </div>
+      `;
+    });
+
+    htmlContent += `</body></html>`;
+    
+    let printWindow = window.open('', '_blank');
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 300);
+    
+  } catch(err) {
+      console.error(err);
+      showToast("列印時發生異常！請確認資料是否正確。", true);
+  }
+}
+
+function exportSummaryExcel() {
+  try {
+    const activeList = getActiveStudents();
+    if (activeList.length === 0) return showToast("請至少勾選一位學生！", true);
+
+    let deadlineDate = new Date(document.getElementById('globalDeadline').value);
+    let printDeadlineStr = `${deadlineDate.getMonth() + 1}月${deadlineDate.getDate()}日`;
+
+    const exportData = activeList.map(s => {
+      let excelEndDateStr = "";
+      if (s.status !== "skip") {
+          let termEndMonthIndex = Math.min(s.monthlyData.length, s.calculated.t1Months) - 1;
+          let lastMonthData = s.monthlyData.length > 0 ? s.monthlyData[termEndMonthIndex] : null;
+          
+          if (lastMonthData && lastMonthData.effGrade === 3 && lastMonthData.date.getMonth() === 4) {
+              excelEndDateStr = `${lastMonthData.date.getFullYear() - 1911}/5/會考`;
+          } else {
+              excelEndDateStr = toROCSlashFormatEnd(s.calculated.termEndDateObj);
+          }
+      }
+      
+      let periodStr = s.status === "skip" ? "-" : `${toROCSlashFormat(s.startDateObj)}-${excelEndDateStr}`;
+      
+      return {
+        "學生全名": s.name,
+        "繳費期限": printDeadlineStr,
+        "繳費期間": periodStr,
+        "科目": s.rawExcelCourse, 
+        "本期學費": s.calculated.finalToPay.toLocaleString(),
+        "年繳學費": s.calculated.yearFinal > 0 ? s.calculated.yearFinal.toLocaleString() : (s.calculated.yearEndStr === "無年繳" ? "無年繳" : ""),
+        "溢繳金額": s.overpay > 0 ? s.overpay.toLocaleString() : "",
+        "備註說明": s.discountNote
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "櫃檯總表");
+    XLSX.writeFile(workbook, `林澈_櫃檯對帳總表_${new Date().getMonth()+1}月.xlsx`);
+  } catch(err) {
+      console.error(err);
+      showToast("下載 Excel 時發生錯誤！請聯絡工程師。", true);
+  }
+}
+</script>
+</body>
+</html>
